@@ -1,48 +1,39 @@
 #!/bin/sh
 
-# note: in order to run this script you need the programs 'pngtopnm' and 'pnmtops'
-# both of which are available (in debian) as part of the 'netpbm' package (as of 2004-05-27)
-# Also required is the 'ps2pdf13' program, part of the (debian) package
-# 'gs-common' (as of 2004-07-30).
+templ=howto/template.tpl
+LORE=/usr/bin/lore
+DEST=../twisted-doc-zh.out
+CURRENT=`pwd`
+VERSION=8.10
 
-VERSION=$1
+rm $DEST -rf
+cp $CURRENT $DEST -R
 
-set -e
-
-templ=doc/core/howto/template.tpl
-
-LORE="./bin/lore/lore --config baseurl=http://twistedmatrix.com/documents/current/api/%s.html"
-
-echo "Processing manual pages"
-for man in doc/*/man; do
-	echo $'\t'"$man"
-	$LORE -p --input man --output lore --config ext=-man.xhtml $man/*.1
-done
-
-for doc in doc/core doc/core/{man,examples,howto,howto/tutorial,howto/policy,specifications,upgrades,upgrades/2.0} doc/{conch,flow,lore,mail,names,pair,web,words}/{examples,howto} doc/mail/tutorial/smtpclient doc/development doc/development/{policy} ; do
+cd $DEST
+for doc in . man examples howto howto/tutorial howto/policy specifications upgrades upgrades/2.0 ; do
+#for doc in ./ ; do
 	if [ -e "$doc" ]; then
-		echo "Processing $doc"
-		echo $'\t'"Lint"
-		$LORE -n --output lint $doc/*.xhtml |sed 's/^/WARNING: /'
-		echo $'\t'"HTML"
-		$LORE \
-			-p --config template=$templ --config ext=.html \
-			--config version=$VERSION \
-			-l $(echo $doc | sed -e 's/^doc\///' | sed -e 's/\(^\|\/\)[^.\/]\+/\1../g')/../core/documentation/howto/ \
-			$doc/*.xhtml
-		echo $'\t'"LaTeX"
-		$LORE -p --output latex --config section $doc/*.xhtml
+		echo "Proccessing $doc"
+		link_rel=$(echo $doc | sed -e 's/\(^\|\/\)[^.\/]\+/\1../g')/howto/
+
+		$LORE -p --config baseurl=http://twistedmatrix.com/documents/current/api/%s.html --config template=$templ --config ext=.html --config version=$VERSION -l $link_rel $doc/*.xhtml
 	else
 		echo "Skipping non-existent $doc"
 	fi
 done
 
-cd doc/core/howto
+echo "Cleaning up..."
+svn ls -R | xargs rm
+find | grep "\.svn" | xargs rm -rf
 
-for i in 1 2; do latex book.tex < /dev/null; done
+echo "Copying necessary files..."
+cp $CURRENT/howto/stylesheet.css howto/
+echo "Fixing problems left by lore..."
+find . -name "*.html" | xargs perl -pi -e 's/\<h2\>Footnotes\<\/h2\>/\<h2\>脚注\<\/h2\>/g'
+find . -name "*.html" | xargs perl -pi -e 's/\<\?xml\ version\=\"1\.0\"\?\>/\<\?xml\ version\=\"1\.0\"\ encoding\=\"UTF\-8\"\?\>/g'
 
-latex book.tex </dev/null | sed '/^LaTeX Warning:/s/^/WARNING: /'
-
-dvips -o book.ps book.dvi
-ps2pdf13 book.ps book.pdf
-
+echo "Archiving..."
+mv twisted-doc-zh.tar.gz /tmp/twisted-doc-zh.tar.gz.orig
+tar czvf /tmp/twisted-doc-zh.tar.gz $DEST
+mv /tmp/twisted-doc-zh.tar.gz.orig .
+mv /tmp/twisted-doc-zh.tar.gz .
