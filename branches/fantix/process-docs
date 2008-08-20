@@ -1,0 +1,39 @@
+#!/bin/sh
+
+templ=howto/template.tpl
+LORE=/usr/bin/lore
+DEST=../twisted-doc-zh.out
+CURRENT=`pwd`
+VERSION=8.10
+
+rm $DEST -rf
+cp $CURRENT $DEST -R
+
+cd $DEST
+for doc in . man examples howto howto/tutorial howto/policy specifications upgrades upgrades/2.0 ; do
+#for doc in ./ ; do
+	if [ -e "$doc" ]; then
+		echo "Proccessing $doc"
+		link_rel=$(echo $doc | sed -e 's/\(^\|\/\)[^.\/]\+/\1../g')/howto/
+
+		$LORE -p --config baseurl=http://twistedmatrix.com/documents/current/api/%s.html --config template=$templ --config ext=.html --config version=$VERSION -l $link_rel $doc/*.xhtml
+	else
+		echo "Skipping non-existent $doc"
+	fi
+done
+
+echo "Cleaning up..."
+svn ls -R | xargs rm
+find | grep "\.svn" | xargs rm -rf
+
+echo "Copying necessary files..."
+cp $CURRENT/howto/stylesheet.css howto/
+echo "Fixing problems left by lore..."
+find . -name "*.html" | xargs perl -pi -e 's/\<h2\>Footnotes\<\/h2\>/\<h2\>脚注\<\/h2\>/g'
+find . -name "*.html" | xargs perl -pi -e 's/\<\?xml\ version\=\"1\.0\"\?\>/\<\?xml\ version\=\"1\.0\"\ encoding\=\"UTF\-8\"\?\>/g'
+
+echo "Archiving..."
+mv twisted-doc-zh.tar.gz /tmp/twisted-doc-zh.tar.gz.orig
+tar czvf /tmp/twisted-doc-zh.tar.gz $DEST
+mv /tmp/twisted-doc-zh.tar.gz.orig .
+mv /tmp/twisted-doc-zh.tar.gz .

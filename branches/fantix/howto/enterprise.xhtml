@@ -1,0 +1,133 @@
+<?xml version="1.0"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <title>twisted.enterprise.adbapi：Twisted对RDBMS的支持</title>
+  </head>
+
+  <body>
+    <h1>twisted.enterprise.adbapi：Twisted对RDBMS的支持</h1>
+
+    <h2>摘要</h2>
+
+    <p>Twisted是一个异步网络框架，但不幸的是，大多数数据库API实现只提供了阻塞方式的接口——<code class="API">twisted.enterprise.adbapi</code>正是为此设计的。你可以通过标准的DB-API 2.0 API访问许多不同的RDBMS，在Twisted中，adbapi正是DB-API 2.0 API的一个非阻塞方式的接口。</p>
+
+    <h2>在阅读之前，你应该知道的</h2>
+
+    <ul>
+      <li>Python :-)</li>
+
+      <li>如何写一个简单的Twisted服务器（参考<a href="servers.xhtml">这篇教程</a>来学着写）</li>
+
+      <li>熟悉如何使用数据库接口（参考<a href="http://www.python.org/topics/database/DatabaseAPI-2.0.html">这篇DBAPI 2.0的文档</a>，或者由Andrew Kuchling写的<a
+      href="http://www.amk.ca/python/writing/DB-API.html">这篇文章</a>）</li>
+    </ul>
+
+    <h2>快速预览</h2>
+
+    <p>Twisted是一个异步框架。这意味着标准的数据库模块不能被直接拿来用，因为它们通常象这样工作：</p>
+<pre class="python">
+# 创建连接……
+db = dbmodule.connect('mydb', 'andrew', 'password') 
+# ……阻塞一段未知长短的时间
+ 
+# 创建一个游标
+cursor = db.cursor() 
+ 
+# 做一次查询……
+resultset = cursor.query('SELECT * FROM table WHERE ...') 
+# ……这能花很长的时间，或许甚至数分钟。
+</pre>
+
+    <p>当使用诸如Twisted这样的异步框架时，这种延迟是无法接受的。正因如此，Twisted提供了<code class="API">twisted.enterprise.adbapi</code>这个异步接口，用以包装各种与<a href="http://www.python.org/topics/database/DatabaseAPI-2.0.html">DB-API 2.0</a>兼容的模块。</p>
+
+    <p><code base="twisted" class="API">enterprise.adbapi</code>会在单独的线程里处理阻塞方式的数据库操作，处理完之后，就会触发原来线程里的callback。与此同时，原来的线程还可以继续干其他的活，比如处理其他请求。</p>
+
+    <h2>我应如何使用adbapi？</h2>
+
+    <p>与直接创建数据库连接不同，使用<code base="twisted.enterprise" class="API">adbapi.ConnectionPool</code>类来为你管理连接。这就使<code base="twisted" class="API">enterprise.adbapi</code>可以使用多个连接，每个线程一个。这很简单：</p>
+<pre class="python">
+# 使用前面例子里的“dbmodule”创建一个ConnectionPool 
+from twisted.enterprise import adbapi 
+dbpool = adbapi.ConnectionPool("dbmodule", 'mydb', 'andrew', 'password') 
+</pre>
+
+    <p>这里需要注意：</p>
+
+    <ul>
+      <li>不需要直接加载dbmodule。你仅需要把名字传递给<code base="twisted.enterprise" class="API">adbapi.ConnectionPool</code>的构造方法。</li>
+
+      <li>你传递给dbmodule.connect的参数，会被作为附加参数，传递给<code base="twisted.enterprise" class="API">adbapi.ConnectionPool</code>的构造方法。你也可以使用关键字参数。</li>
+    </ul>
+
+   <p>现在我们可以做一次数据库查询：</p>
+
+<pre class="python">
+# 等同于cursor.execute(statement)，返回cursor.fetchall()：
+def getAge(user):
+    return dbpool.runQuery("SELECT age FROM users WHERE name = ?", user)
+
+def printResult(l):
+    if l:
+        print "年龄：", l[0][0]
+    else:
+        print "没有这样的用户"
+
+getAge("joe").addCallback(printResult)
+</pre>
+
+    <p>或许如果不是<code>getAge</code>的返回值的话，这是直截了当的。它返回一个<code class="API">twisted.internet.defer.Deferred</code>，允许在完成之后（或是出错之后）执行任意的callback。<a href="defer.xhtml">这里</a>有Deferred的更多文档。</p>
+
+    <p>除了<code>runQuery</code>之外，还有<code>runOperation</code>和<code>runInteraction</code>，调用时可以传给它们一个callable（比如一个函数）。这个函数将会在线程中被调用，第一个参数是一个<code class="API">twisted.enterprise.adbapi.Transaction</code>——基本上算是一个DB-API的游标。当你用完数据库之后，任何情况下都会提交一个数据库事务——除非抛出了异常，事务将会回滚。</p>
+
+<pre class="python">
+def _getAge(txn, user):
+    # 这将在一个线程中跑，所以我们可以使用阻塞方式的调用
+    txn.execute("SELECT * FROM foo")
+    # ……把txn当作游标来用吧……
+    txn.execute("SELECT age FROM users WHERE name = ?", user)
+    result = txn.fetchall()
+    if result:
+        return result[0][0]
+    else:
+        return None
+
+def getAge(user):
+    return dbpool.runInteraction(_getAge, user)
+
+def printResult(age):
+    if age != None:
+        print "年龄：", age
+    else:
+        print "没有这样的用户"
+
+getAge("joe").addCallback(printResult)
+</pre>
+
+    <p>还有，这些例子假设dbmodule用的是<q>qmarks</q>风格的参数（参考DB-API规范），这并不代表什么。如果你的dbmodule使用不同的风格（比如pyformat），那么不要照搬例子。Twisted没有试图在参数上动任何神奇的手脚——<code class="python">runQuery(query, params, ...)</code>直接地映射到<code class="python">cursor.execute(query, params, ...)</code>。</p>
+
+	<h2>例子：各式各样的数据库适配器</h2>
+
+	<p>注意，第一个参数就是你通常要加载的模块的名称——<code class="python">connect(...)</code>就来自于这些模块，后面的参数就是你同常传递给<code class="python">connect(...)</code>的所有参数。</p>
+	 
+<pre class="python">
+from twisted.enterprise import adbapi
+
+# Gadfly
+cp = adbapi.ConnectionPool("gadfly", "test", "/tmp/gadflyDB")
+
+# PostgreSQL PyPgSQL
+cp = adbapi.ConnectionPool("pyPgSQL.PgSQL", database="test")
+
+# MySQL
+cp = adbapi.ConnectionPool("MySQLdb", db="test")
+</pre>
+
+    <h2>就是这样的了！</h2>
+
+    <p>关于在Twisted中使用数据库，你就需要知道这么多。你很有可能应该读一读adbapi模块的文档（以及源码——译者注），弄清楚里面其他函数的意思，但是希望这篇文档把核心观点都说清楚了。</p>
+  </body>
+</html>
+

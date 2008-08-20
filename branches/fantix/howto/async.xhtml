@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head><title>Twisted异步编程</title></head>
+<body>
+
+<h1>Twisted异步编程</h1>
+
+<p>这篇文档介绍了异步编程模型，以及在Twisted中抽象出的Deferred——象征着“承诺了一定会有的”结果，并且可以把最终结果传递给处理函数（Python中实现了<code>__call__()</code>方法的对象都可以称之为“函数”，方法也是以函数的形式存在的，因此将所有“function”译作“函数”。——译者注）。</p>
+
+<p>这篇文档适合于刚接触Twisted的读者，并且熟悉Python编程语言，至少从概念上熟悉网络的核心概念，诸如服务器、客户端和套接口。这篇文档将给你一个对并发编程的上层概观（交叉执行许多任务），以及Twisted的并发模型：<strong>非阻塞编码</strong>或者叫<strong>异步编码</strong>。</p>
+
+<p>在讨论过包含有Deferred的并发模型之后，将介绍当函数返回了一个Deferred对象时，处理结果的方法。</p>
+
+<h2>并发编程介绍</h2>
+
+<p>
+要完成某些计算任务经常需要不少时间，其原因有两点：
+</p>
+
+<ol>
+<li>任务是计算集中型的（比如，求一个很大整数的所有因数），并且需要相当的CPU时间进行计算；或者</li>
+<li>任务并不是计算集中型的，但是需要等待某些数据，以产生结果。</li>
+</ol>
+
+<h3>等待回应</h3>
+
+<p>网络编程的基本功能就是等待数据。想象你有一个函数，这个函数会总结一些信息并且作为电子邮件发送。函数需要连接到一个远程服务器、等待服务器的回应、检查服务器能否处理这封电子邮件、等待回应、发送电子邮件、等待确认信息，然后断开连接。</p>
+
+<p>这其中任何一步都有可能占用很长时间。你的程序可能使用所有可能模型中最简单的一个——它实际上只是停下来等着数据的发送和接收，但在这种情况下，它有非常明显的基本限制：它不能同时发送多封电子邮件；并且在发送电子邮件的时候，它其实什么也做不了。</p>
+
+<p>因此，除了最简单的之外，所有网络程序都会避免这种模型。另外还有许多不同的模型，它们都允许你的程序在等待数据以继续某个任务的同时，继续做手头上的其他任务，这些模型你都可以采纳。</p>
+
+<h3>不等待数据</h3>
+
+<p>编写网络程序有很多种办法，主要有这么几种：</p>
+
+<ol>
+    <li>在不同的操作系统进程中处理各个连接，这种情况下，操作系统会处理进程调度，比如当一个进程等待的时候，让其他进程继续工作；</li>
+    <li>在不同的线程中处理各个连接<span class="footnote">这种方法有很多变种，比如说在一个有限大小的线程池中处理所有连接，本质上来说，这是同一个想法的优化版。</span>，这种情况下，线程框架会处理好诸如“当一个线程等待时，让其他线程继续工作”的问题；或者</li>
+    <li>在一个线程中，使用非阻塞的系统调用来处理所有连接。</li>
+</ol>
+
+<h3>非阻塞调用</h3>
+
+<p>上述第三种模型就是使用Twisted框架时的标准模型：非阻塞调用。</p>
+
+<p>当在一个线程中处理多个连接时，调度就成为了应用程序的责任，而不是操作系统的。调度通常的实现方案是：当连接准备好读或是写时，调度系统会调用一个之前注册过的函数——通常被叫做<strong>异步</strong>，<strong>事件驱动</strong>或是<strong>基于回调</strong>的编程。</p>
+
+<p>在这种模型下，之前发送电子邮件的函数应该是象这样的：</p>
+
+<ol>
+  <li>调用一个连接函数，用以连接到远程服务器；</li>
+  <li>连接函数立刻返回，暗示着当连接建立后，将调用电子邮件发送的通知；并且</li>
+  <li>连接一旦建立，系统就会通知发送电子邮件的函数，连接已经准备就绪。</li>
+</ol>
+
+<p>于我们最初阻塞的步骤相比，上面这种非阻塞的步骤有什么好处呢？当发送电子邮件的函数在连接建立之前无法继续的时候，程序的其他部分依然可以执行其他任务，比如说开始为其他电子邮件的连接执行类似的步骤。于是，整个程序就不会卡在等待一个连接的建立上。</p>
+
+<h3>callback</h3>
+
+<p><em>callback</em>（回调）是通知应用程序数据已经就绪的经典模型。应用程序在调用一个方法，试图获取一些数据时，同时提供一个callback函数，当数据就绪时，这个callback函数会被调用，并且就绪的数据就是调用的参数之一。因此，应用程序应该在callback函数中，继续执行之前获取这些数据时，想要执行的任务（当时没能马上得到这些数据，所以当时无法执行这些任务——译者注）。</p>
+
+<p>在同步编程中，一个函数会先请求数据，然后等待数据，最后处理它。在异步编程中，一个函数请求数据之后，会在数据准备就绪后，让外部库调用其callback函数。</p>
+
+<a name="deferreds" />
+<h2>Deferred</h2>
+
+<p>Twisted使用<code class="API" base="twisted.internet.defer">Deferred</code>对象来管理callback序列。作为Twisted库的“客户端”，应用程序将一连串函数添加到Deferred对象中，当异步请求的结果准备就绪时，这一连串函数将被按顺序调用（这一连串函数被称为一个<strong>callback</strong>序列，或是一条<strong>callback链</strong>），一起添加的还有另外一连串函数，当异步请求出现错误的时候，他们将被调用（称作一个<strong>errback</strong>序列，或是一条<strong>errback链</strong>）。异步库代码会在结果准备就绪时，调用第一个callback，或是在出现错误时，调用第一个errback，然后<code>Deferred</code>对象就会将callback或errback的返回结果传递给链中的下一个函数。</p> 
+
+<h2>Deferred解决的问题</h2>
+
+<p>Deferred被设计用来帮助解决第二类并发问题——非计算集中型任务，并且延迟时间是可以估计的。等待硬盘访问，数据库访问和网络访问的函数都属于这一类，尽管时间延迟不尽相同。</p>
+
+<p>Deferred被设计用来使Twisted程序可以无阻塞地等待数据，直到数据准备就绪。为了达到这个目的，Deferred为库与应用程序提供了一个简单的callback管理接口。库可以通过调用<code class="API" base="twisted.internet.defer">Deferred.callback</code>来把准备就绪的数据传回给应用程序，或者调用<code class="API" base="twisted.internet.defer">Deferred.errback</code>来报告一个错误。应用程序可以按它们希望的顺序，设置结果处理逻辑，以callback与errback的形式添加到Deferred对象中去。</p>
+
+<p>使CPU尽可能的有效率，是Deferred与该问题的其他解决方案背后的基本思路。如果一个任务在等待数据，与其让CPU（以及程序本身！）眼巴巴地等着数据（对于进程，这通常叫做“阻塞”），不如让程序同时执行些别的操作，并且同时留意着某些信号——一旦数据准备就绪，程序就可以（但不是立即——译者注）回到刚才的地方继续执行。</p>
+
+<p>
+在Twisted里，一个函数返回一个Deferred对象，意味着它给调用者一个信号：它在等待数据。当数据准备就绪后，程序就会激活那个Deferred对象的callback链，来处理数据。
+</p>
+
+<h2>Deferred——数据即将到来的信号</h2>
+
+<p>在之前我们发送电子邮件的例子中，父函数调用了一个连接远程服务器的函数。异步性要求这个连接函数必须<em>不等待结果</em>而直接返回，父函数才可以做其他事情。可是，父函数或者它的控制程序又是怎么知道连接尚未建立的呢？当连接建立后，它又是怎么使用连接的呢？</p>
+
+<p>Twisted有一个对象可以作为这种情况的一个信号。连接函数返回一个<code class="API">twisted.internet.defer.Deferred</code>对象，给出一个操作尚未完成的信号。</p>
+
+<p>Deferred有两个目的。第一，它说“我是一个信号，只是通知你不管你刚才要我做的什么，结果还没有出来”。第二，你可以让Deferred在结果出来后执行你的东西。</p>
+
+<h3>callback</h3>
+
+<p>添加一个callback——这就是你让Deferred在结果出来后执行你东西的办法，也就是让Deferred在结果出来后调用一个方法。</p>
+
+<p>有一个Twisted库函数返回Deferred，就是<code class="API">twisted.web.client.getPage</code>（这是一个异步获取网页的函数。——译者注）。在这个例子里，我们调用了<code>getPage</code>——它返回了一个Deferred，然后添加了一个callback来处理返回的页面内容——当然处理是发生在数据准备就绪之后：</p>
+
+<pre class="python">
+from twisted.web.client import getPage
+
+from twisted.internet import reactor
+
+def printContents(contents):
+    '''
+    这就是“callback”函数，被添加到Deferred，当“承诺了一定会有的数据”准备就绪后，
+    Deffered会调用它
+    '''
+
+    print "Deferred调用了printContents，内容如下："
+    print contents
+
+    # 停止Twisted事件处理系统————这通常有更高层的办法
+    reactor.stop()
+
+# 调用getPage，它会马上返回一个Deferred————承诺一旦页面内容下载完了，
+# 就会把他们传给我们的callback们
+deferred = getPage('http://twistedmatrix.com/')
+
+# 给Deferred添加一个callback————要求它在页面内容下载完后，调用printContents
+deferred.addCallback(printContents)
+
+# 启动Twisted事件处理系统，同样，这不是通常的办法
+reactor.run()
+</pre>
+
+<p>添加两个callback是一种非常常见的Deferred用法。第一个callback的返回结果会传给第二个callback：</p>
+
+<pre class="python">
+from twisted.web.client import getPage
+
+from twisted.internet import reactor
+
+def lowerCaseContents(contents):
+    '''
+    这是一个“callback”函数，被添加到Deferred，当“承诺了一定会有的数据”准备就绪后，
+    Deffered会调用它。它把所有的数据变成小写
+    '''
+
+    return contents.lower()
+
+def printContents(contents):
+    '''
+    这是一个“callback”函数，在lowerCaseContents之后被添加到Deferred，
+    Deferred会把lowerCaseContents的返回结果作为参数，调用这个callback
+    '''
+
+    print contents
+    reactor.stop()
+
+deferred = getPage('http://twistedmatrix.com/')
+
+# 向Deferred中添加两个callback————让Deferred在页面内容下载完之后执行
+# lowerCaseContents，然后将其返回结果作为参数，调用printContents
+deferred.addCallback(lowerCaseContents)
+deferred.addCallback(printContents)
+
+reactor.run()
+</pre>
+
+<h3>错误处理：errback</h3>
+
+<p>正如异步函数会在其结果产生之前返回，在有可能检测到错误之前返回也是可以的：失败的连接，错误的数据，协议错误，等等。正如你可以将callback添加到Deferred，你也可以将错误处理逻辑（“errback”）添加到Deferred，当出现错误，数据不能正常取回时，Deferred会调用它：</p>
+
+<pre class="python">
+from twisted.web.client import getPage
+
+from twisted.internet import reactor
+
+def errorHandler(error):
+    '''
+    这是一个“errback”函数，被添加到Deferred，当出现错误事件是，Deferred将会调用它
+    '''
+
+    # 这么处理错误并不是很实际，我们只是把它打出来：
+    print "An error has occurred: &lt;%s&gt;" % str(error)
+    # 然后我们停止整个处理过程：
+    reactor.stop()
+
+def printContents(contents):
+    '''
+    这是一个“callback”函数，被添加到Deferred，Deferred会把页面内容作为参数调用它
+    '''
+
+    print contents
+    reactor.stop()
+
+# 我们请求一个不存在的页面，来演示错误链
+deferred = getPage('http://twistedmatrix.com/does-not-exist')
+
+# 向Deferred添加callback，以处理页面内容
+deferred.addCallback(printContents)
+
+# 向Deferred添加errback，以处理任何错误
+deferred.addErrback(errorHandler)
+
+reactor.run()
+</pre>
+
+<h2>结论</h2>
+
+<p>在这篇文档中，你应该：</p>
+
+<ol>
+<li>认识了为什么复杂网络程序需要某种形式的并发性；</li>
+<li>了解了Twisted框架用异步调用的形式支持并发；</li>
+<li>了解了Twisted框架使用Deferred对象来管理callback链；</li>
+<li>认识了<code class="API" base="twisted.web.client">getPage</code>函数如何返回一个Deferred对象；</li>
+<li>向那个Deferred对象添加了callback与errback；以及</li>
+<li>认识了Deferred的callback链与errback链的触发。</li>
+</ol>
+
+<h3>参考资料</h3>
+
+<p>因为Deferred的抽象是Twisted编程中如此核心的一部分，以至于另外还有几篇关于它的详细的指南：</p>
+
+<ol>
+<li><a href="defer.html">使用Deferred</a>，一篇关于使用Deferred的更完整的指南，包括链式Deferred。</li>
+<li><a href="gendefer.html">产生Deferred</a>，一篇关于创建Deferred和触发他们callback链的指南。</li>
+</ol>
+
+</body></html>
