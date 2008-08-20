@@ -4,65 +4,31 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <title>Writing Servers</title>
+    <title>编写服务器</title>
   </head>
 
   <body>
-    <h1>Writing Servers</h1>
+    <h1>编写服务器</h1>
 
-    <h2>Overview</h2>
+    <h2>概述</h2>
 
-    <p>Twisted is a framework designed to be very flexible and let
-    you write powerful servers. The cost of this flexibility is a
-    few layers in the way to writing your server.</p>
+    <p>Twisted是一个非常灵活的框架，能让你编写出强大的服务器。而灵活的代价，就是编写服务器需要用的几个层。</p>
 
-    <p>This document describes the
-    <code class="API" base="twisted.internet.protocol">Protocol</code>
-    layer, where you 
-    implement protocol parsing and handling.  If you are implementing 
-    an application then you should read this document second, after 
-    first reading the top level overview of how to begin writing your 
-    Twisted application, in <a href="plugin.xhtml">Writing Plug-Ins 
-    for Twisted</a>. This document is only relevant to TCP, SSL and
-    Unix socket servers, there is a <a href="udp.xhtml">separate document</a>
-     for UDP.</p>
+    <p>这篇文档描述了协议（<code class="API" base="twisted.internet.protocol">Protocol</code>）层，我们的程序要在这里依照既定协议对数据进行分析和处理。如果你在写一个应用程序，那么在读这篇文档之前，你应该先在<a href="plugin.xhtml">《编写Twisted插件》</a>里，读一下关于如何开始编写Twisted应用程序的顶层概述。这篇文档只讨论TCP、SSL与Unix套接字服务器，有<a href="udp.xhtml">另外一篇文档</a>讨论UDP。</p>
 
-    <p>Your protocol handling class will usually subclass <code
-    class="API">twisted.internet.protocol.Protocol</code>. Most
-    protocol handlers inherit either from this class or from one of
-    its convenience children. An instance of the protocol class
-    might be instantiated per-connection, on demand, and might go
-    away when the connection is finished. This means that
-    persistent configuration is not saved in the
-    <code>Protocol</code>.</p>
+    <p>你的协议处理类通常会继承<code class="API">twisted.internet.protocol.Protocol</code>。大多数协议处理程序要么继承自这个类，要么继承自它更便捷的子类。协议类实例通常在连接建立时根据需要实例化产生，连接断开后消失。这意味着持久的配置不能保存在<code>Protocol</code>里。</p>
 
-    <p>The persistent configuration is kept in a Factory class,
-    which usually inherits from <code
-    class="API">twisted.internet.protocol.Factory</code>. The
-    default factory class just instantiates each <code>Protocol</code>, and then
-    sets on it an attribute called <code>factory</code> which
-    points to itself. This lets every <code>Protocol</code> access,
-    and possibly modify, the persistent configuration.</p>
+    <p>持久的配置由一个工厂类来保管，这个工厂类通常继承自<code class="API">twisted.internet.protocol.Factory</code>。默认的工厂类仅仅实例化每个<code>Protocol</code>，然后给每个实例设置一个指向工厂自己<code>factory</code>属性。这样每个<code>Protocol</code>都可以访问持久的配置，并且修改他们。</p>
 
-    <p>It is usually useful to be able to offer the same service on
-    multiple ports or network addresses. This is why the <code>Factory</code>
-    does not listen to connections, and in fact does not
-    know anything about the network. See <code
-    class="API">twisted.internet.interfaces.IReactorTCP.listenTCP</code>,
-    and the other <code>IReactor*.listen*</code> APIs for more
-    information.</p>
+    <p>在多个端口或是不同网络地址上提供一样的服务通常是很有用处的。这就是为什么<code>Factory</code>不监听连接，并且实际上对网络一无所知。更多信息见<code class="API">twisted.internet.interfaces.IReactorTCP.listenTCP</code>，以及其他的<code>IReactor*.listen*</code>API。</p>
 
-    <p>This document will explain each step of the way.</p>
+    <p>这篇文档将一步一步地说明。</p>
 
-    <h2>Protocols</h2>
+    <h2>协议</h2>
 
-    <p>As mentioned above, this, along with auxiliary classes and
-    functions, is where most of the code is. A Twisted protocol
-    handles data in an asynchronous manner. What this means is that
-    the protocol never waits for an event, but rather responds to
-    events as they arrive from the network.</p>
+    <p>正如之前提到的，协议与一些辅助的类和函数，包含了大部分的代码。Twisted的协议程序以异步的方式来处理数据，这就是说，协议程序从来不会等待一个事件，当网络上来了一个事件时，协议程序会作出响应。</p>
 
-    <p>Here is a simple example:</p>
+    <p>这里有一个简单的例子：</p>
 <pre class="python">
 from twisted.internet.protocol import Protocol
 
