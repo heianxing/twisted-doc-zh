@@ -5,12 +5,26 @@ templ=howto/template.tpl
 LORE="/home2/fantixor/system/bin/lore"
 NIGHTLY="/home2/fantixor/twisted-doc-zh/nightly"
 DEST="$NIGHTLY/online"
-BUILD=`date +%Y%m%d`
-date +%Y-%m-%d > $NIGHTLY/latest
-TAR="$NIGHTLY/twisted-doc-zh_nightly_$BUILD.tar.gz"
 CURRENT="/home2/fantixor/twisted-doc-zh/trunk"
 VERSION="8.10"
+date +%Y-%m-%d > $NIGHTLY/latest
+date +%Y-%m-%d
 
+echo
+echo "Updating..."
+cd $CURRENT
+REVISION=$(/home2/fantixor/system/bin/svn up | grep "revision" | awk '{sub(/(At revision |Updated to revision )/, "");print}' | awk '{sub(/\./,"");print}')
+if [ $REVISION = $(cat $NIGHTLY/rev) ]
+then
+	echo "No update this time, will not build"
+	exit 0
+fi
+echo $REVISION > $NIGHTLY/rev
+TAR="$NIGHTLY/twisted-doc-zh_nightly_r$REVISION.tar.gz"
+echo "Revision $REVISION."
+
+echo
+echo "Begin to process docs..."
 rm $DEST -rf
 cp $CURRENT $DEST -R
 cd $DEST
@@ -26,19 +40,25 @@ for doc in . man examples howto howto/tutorial howto/policy specifications upgra
 	fi
 done
 
-echo "\nCleaning up..."
+echo
+echo "Cleaning up..."
 #svn ls -R | xargs rm
 find | grep xhtml | xargs rm
 find | grep "\.svn" | xargs rm -rf
 
-echo "\nCopying necessary files..."
+echo
+echo "Copying necessary files..."
 cp $CURRENT/howto/stylesheet.css howto/
+
+echo
 echo "Fixing problems left by lore..."
 find . -name "*.html" | xargs perl -pi -e 's/\<h2\>Footnotes\<\/h2\>/\<h2\>脚注\<\/h2\>/g'
 find . -name "*.html" | xargs perl -pi -e 's/\<\?xml\ version\=\"1\.0\"\?\>/\<\?xml\ version\=\"1\.0\"\ encoding\=\"UTF\-8\"\?\>/g'
 
-echo "\nArchiving..."
+echo
+echo "Archiving..."
 cd $NIGHTLY
-mv online twisted-doc-zh_nightly_$BUILD
-tar czvf $TAR twisted-doc-zh_nightly_$BUILD
-mv twisted-doc-zh_nightly_$BUILD online
+rm $TAR -f
+mv online twisted-doc-zh_nightly_r$REVISION
+tar czvf $TAR twisted-doc-zh_nightly_r$REVISION
+mv twisted-doc-zh_nightly_r$REVISION online
