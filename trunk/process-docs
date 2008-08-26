@@ -13,7 +13,8 @@ date +%Y-%m-%d
 echo
 echo "Updating..."
 cd $CURRENT
-REVISION=$(/home2/fantixor/system/bin/svn up | grep "revision" | awk '{sub(/(At revision |Updated to revision )/, "");print}' | awk '{sub(/\./,"");print}')
+/home2/fantixor/system/bin/svn up
+REVISION=$(/home2/fantixor/system/bin/svn info | grep "Rev:" | awk '{sub(/Last Changed Rev: /, "");print}')
 if [ $REVISION = $(cat $NIGHTLY/rev) ]
 then
 	echo "No update this time, will not build"
