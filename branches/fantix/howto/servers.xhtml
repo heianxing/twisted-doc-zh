@@ -12,21 +12,21 @@
 
     <h2>概述</h2>
 
-    <p>Twisted是一个非常灵活的框架，能让你编写出强大的服务器。而灵活的代价，就是编写服务器需要用的几个层。</p>
+    <p>Twisted是一个非常灵活的框架，能让你编写出强大的服务器。而灵活的代价就是编写服务器时，需要分好几层。</p>
 
-    <p>这篇文档描述了协议（<code class="API" base="twisted.internet.protocol">Protocol</code>）层，我们的程序要在这里依照既定协议对数据进行分析和处理。如果你在写一个应用程序，那么在读这篇文档之前，你应该先在<a href="plugin.xhtml">《编写Twisted插件》</a>里，读一下关于如何开始编写Twisted应用程序的顶层概述。这篇文档只讨论TCP、SSL与Unix套接字服务器，有<a href="udp.xhtml">另外一篇文档</a>讨论UDP。</p>
+    <p>这篇文档描述了协议（<code class="API" base="twisted.internet.protocol">Protocol</code>）层，我们的程序要在这里依照既定协议对数据进行分析和处理。如果你在写一个应用程序，那么在读这篇文档之前，你应该先在<a href="plugin.xhtml">《编写Twisted插件》</a>里，读一下关于如何开始编写Twisted应用程序的总体概述。这篇文档只讨论TCP、SSL与Unix套接字服务器，有<a href="udp.xhtml">另外一篇文档</a>讨论UDP。</p>
 
-    <p>你的协议处理类通常会继承<code class="API">twisted.internet.protocol.Protocol</code>。大多数协议处理程序要么继承自这个类，要么继承自它更便捷的子类。协议类实例通常在连接建立时根据需要实例化产生，连接断开后消失。这意味着持久的配置不能保存在<code>Protocol</code>里。</p>
+    <p>你的协议处理类通常是<code class="API">twisted.internet.protocol.Protocol</code>的子类。大多数协议处理程序要么继承自这个类，要么继承自它的某个更便捷的子类。系统会根据需要，为每个连接创建一个协议类的实例，连接断开后就不用了。这就意味着<code>Protocol</code>里没存持久配置（比如服务器端口等——译者注）。</p>
 
-    <p>持久的配置由一个工厂类来保管，这个工厂类通常继承自<code class="API">twisted.internet.protocol.Factory</code>。默认的工厂类仅仅实例化每个<code>Protocol</code>，然后给每个实例设置一个指向工厂自己<code>factory</code>属性。这样每个<code>Protocol</code>都可以访问持久的配置，并且修改他们。</p>
+    <p>持久配置由一个工厂类来保管，这个工厂类通常继承自<code class="API">twisted.internet.protocol.Factory</code>。默认的工厂类仅仅把<code>Protocol</code>实例化，并且给每个实例设置一个指向工厂自己的属性<code>factory</code>。这样每个<code>Protocol</code>都可以访问持久配置，并且可以修改他们。</p>
 
     <p>在多个端口或是不同网络地址上提供一样的服务通常是很有用处的。这就是为什么<code>Factory</code>不监听连接，并且实际上对网络一无所知。更多信息见<code class="API">twisted.internet.interfaces.IReactorTCP.listenTCP</code>，以及其他的<code>IReactor*.listen*</code>API。</p>
 
-    <p>这篇文档将一步一步地说明。</p>
+    <p>这篇文档会解释上面的每一步。</p>
 
     <h2>协议</h2>
 
-    <p>正如之前提到的，协议与一些辅助的类和函数，包含了大部分的代码。Twisted的协议程序以异步的方式来处理数据，这就是说，协议程序从来不会等待一个事件，当网络上来了一个事件时，协议程序会作出响应。</p>
+    <p>正如之前提到的，大部分的代码都在协议与一些辅助的类和函数中。Twisted的协议程序以异步的方式来处理数据，这就是说，协议程序从来不会去等待一个事件，而是当网络上的事件到达时再去响应。</p>
 
     <p>这里有一个简单的例子：</p>
 <pre class="python">
@@ -38,24 +38,20 @@ class Echo(Protocol):
         self.transport.write(data)
 </pre>
 
-    <p>This is one of the simplest protocols. It simply writes back
-    whatever is written to it, and does not respond to all events. Here is an
-    example of a Protocol responding to another event:</p>
+    <p>这是一个最简单的协议，它只是把收到的内容写回去，并没有响应所有的事件。下面这个例子中响应了另一个事件：</p>
 <pre class="python">
 from twisted.internet.protocol import Protocol
 
 class QOTD(Protocol):
 
     def connectionMade(self):
-        self.transport.write("An apple a day keeps the doctor away\r\n") 
+        self.transport.write("一天一苹果，医生不缠我\r\n") 
         self.transport.loseConnection()
 </pre>
 
-    <p>This protocol responds to the initial connection with a well
-    known quote, and then terminates the connection.</p>
+    <p>这个协议在建立连接之后，发送一条谚语（原文是“An apple a day keeps the doctor away”——译者注），然后断开连接。</p>
 
-    <p>The connectionMade event is usually where set up of the
-    connection object happens, as well as any initial greetings (as
+	<p><code>connectionMade</code>事件通常发生在连接对象构建的时候，以及任何初始化握手时（像上面的QOTD协议，其实它是根据RFC 865写的（RFC 865就是Quote of the Day Protocol——译者注））。<code>connectionLost</code>事件发生在连接特定的各种对象销毁时。
     in the QOTD protocol above, which is actually based on RFC
     865). The <code>connectionLost</code> event is where tearing down of any
     connection-specific objects is done. Here is an example:</p>
