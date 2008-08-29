@@ -10,8 +10,8 @@
   <body>
     <h1>Scheduling tasks for the future</h1>
 
-    <p>Let's say we want to run a task X seconds in the future.
-    The way to do that is defined in the reactor interface <code
+    <p>现在让我们讨论一下如何让一个任务在N秒之后执行。twisted中提供
+    这一功能的方法被定义在 reactor 的接口中 <code
     class="API">twisted.internet.interfaces.IReactorTime</code>:</p>
 <pre class="python">
 from twisted.internet import reactor
@@ -25,12 +25,13 @@ reactor.callLater(3.5, f, "hello, world")
 reactor.run()
 </pre>
 
-    <p>If the result of the function is important or if it may be necessary
-    to handle exceptions it raises, then the <code
-    class="API">twisted.internet.task.deferLater</code> utility conveniently
-    takes care of creating a <code class="API"
-    base="twisted.internet.defer">Deferred</code> and setting up a delayed
-    call:</p>
+    <p>如果说我们要执行的函数（上例中的f()）的返回值很重要，或者这个函数会
+    产生一些需要处理的异常，那么我们就需要用到
+   <code
+    class="API">twisted.internet.task.deferLater</code>，它可以很方便的创建
+    并返回一个 <code class="API"
+    base="twisted.internet.defer">Deferred</code> 并且为它添加一个delayed 
+    call(当延迟运行的函数返回结果时会根据情况调用此函数):</p>
 <pre class="python">
 from twisted.internet import task
 from twisted.internet import reactor
@@ -47,8 +48,8 @@ d.addCallback(called)
 reactor.run()
 </pre>
 
-    <p>If we want a task to run every X seconds repeatedly, we can
-    use <code
+    <p>如果我们想让一个任务周期性的运行，可以使用
+    <code
     class="API">twisted.internet.task.LoopingCall</code>:</p>
 <pre class="python">
 from twisted.internet import task
@@ -64,7 +65,8 @@ l.start(1.0) # call every second
 reactor.run()
 </pre>
 
-    <p>If we want to cancel a task that we've scheduled:</p>
+    <p>当我们成功添加了一个将要执行的任务之后，又想取消它，
+    可以这么做.</p>
 <pre class="python">
 from twisted.internet import reactor
 
@@ -76,7 +78,8 @@ callID.cancel()
 reactor.run()
 </pre>     
 
-    <p>As with all reactor-based code, in order for scheduling to work the reactor must be started using <code class="python">reactor.run()</code>.</p>
+    <p>最后要记住所有基于 reactor 的代码，必须先运行<code class="python">
+    reactor.run()</code>才可以正常运行.</p>
   </body>
 </html>
 
