@@ -10,68 +10,66 @@
 
 <div class="note">
 <p>
-Due to lack of maintenance, <code>twisted.enterprise.row</code>
-and <code>twisted.enterprise.reflector</code> have been deprecated since
-Twisted 8.0.
+由于缺乏维护，<code>twisted.enterprise.row</code>
+以及 <code>twisted.enterprise.reflector</code> 从Twisted8.0 版本
+起开始不被受到推荐使用。
 </p>
 
 <p>
-This documentation is maintained only for users with an existing
-codebase.
+所以此文档的保留仅是为了方便那些还在使用现存旧版本代码的用户。
 </p>
 </div>
 
 
-<h1>Twisted Enterprise Row Objects</h1>
+<h1>Twisted的企业级行对象（Twisted Enterprise Row Objects）</h1>
 
-<p>The <code>twisted.enterprise.row</code> module is a method of
-interfacing simple python objects with rows in relational database
-tables. It has two components: the <code>RowObject</code> class which
-developers sub-class for each relational table that their code
-interacts with, and the <code>Reflector</code> which is responsible
-for updates, inserts, queries and deletes against the database.</p>
+<p><code>twisted.enterprise.row</code> 模块是简单python对象与关系
+数据库中行进行交流连接的一种方法。
+它含有两个组件：<code>RowObject</code> 类，开发者可以通过继承它而
+获得的子类来和每一个相关的关系表建立联系，
+以及 <code>Reflector</code>类，它负责对数据库进行查询，插入，更新
+删除等操作。</p>
 
-<p>The row module is intended for applications such as on-line
-games, and websites that require a back-end database interface.
-It is not a full functioned object-relational mapper for python
-- it deals best with simple data types structured in ways that
-can be easily represented in a relational database. It is well
-suited to building a python interface to an existing relational
-database, and slightly less suited to added database persistance
-to an existing python application.</p>
+<p>row组件（原文为row module）更适用于类似在线游戏、网站等类似需要
+后台数据库接口的应用。它本身并非为python提供了一个完整的对象－
+关系映射功能————它的长处是可以很好的处理一些比较容易就可以在关系数据
+库中表示出来的数据结构。最合适使用它的方法是为一个已经存在的关系
+数据库建立一个python的接口，而当反过来为一个已有的python系统添加
+数据库的持久应用（原文为database persistance）时则显得有点不那么
+合适了。
+</p>
 
-<p><em>If row does not fit your model, you will be best off using
-the <a href="enterprise.xhtml">low-level database API</a> directly, 
-or writing your own object/relational layer on top of it.</em></p>
+<p><em>如果说row对象并不适合你建立的系统模型，你最好自己直接使用
+<a href="enterprise.xhtml">low-level database API</a> ， 
+或者是在其之上建立自己的对象/关系中间层来解决问题。</em></p>
 
-<h2>Class Definitions</h2>
+<h2>类定义（Class Definitions）</h2>
 
-<p>To interface to relational database tables, the developer must
-create a class derived from the <code>twisted.enterprise.row.RowObject</code>
-class for each table. These derived classes must define a number
-of class attributes which contains information about the database
-table that class corresponds to. The required class attributes
-are:</p>
-
-<ul>
-  <li>rowColumns - list of the column names and types in the table with
-  the correct case</li>
-  <li>rowKeyColumns - list of key columns in form: <code>[(columnName,
-  typeName)]</code></li>
-  <li>rowTableName - the name of the database table</li>
-</ul>
-
-<p>There are also two optional class attributes that can be specified:</p>
+<p>为了和一个关系数据库表进行互交
+程序员必须为每一张这样的表创建一个派生自<code>twisted.enterprise.row.
+RowObject</code>的子类。这些子类必须定义一系列类属性，它们包含了
+与自己相关的表的信息。这些类属性包括：
+</p>
 
 <ul>
-  <li>rowForeignKeys - list of foreign keys to other database tables
-   in the form: <code>[(tableName, [(childColumnName, childColumnType), ...], 
-   [(parentColumnName, parentColumnType), ...], containerMethodName, autoLoad]</code></li>
-  <li>rowFactoryMethod - a method that creates instances of this
-  class</li>
+  <li>列名（rowColumns） —— 表中列名和各列属性的列表，保持大小写的一致
+  </li>
+  <li>关键字列表(rowKeyColumns) —— 以该形式: <code>[(列名称,
+  类型)]</code>记录的关键字的列表</li>
+  <li>表明(rowTableName) —— 对应的表的名称</li>
 </ul>
 
-<p>For example:</p>
+<p>此外还有两个可选的类变量可以被定义：</p>
+
+<ul>
+  <li>外键(rowForeignKeys) —— 以此形式：<code>[(表名, [(子列名, 子列类型), ...], 
+   [(父列名, 父列类型), ...], 
+   containerMethodName,autoLoad]</code>进行记录的对应到其他表的外键列表</li>
+  <li>row的工厂方法(rowFactoryMethod) —— 创建自身(因该就是row.RowObject的子类
+      )实例的方法 </li>
+</ul>
+
+<p>举个例子：</p>
 
 <pre class="python">
 class RoomRow(row.RowObject):
@@ -88,23 +86,24 @@ class RoomRow(row.RowObject):
     rowFactoryMethod = [testRoomFactory]
 </pre>
 
-<p>The items in the rowColumns list will become data members of
-classes of this type when they are created by the Reflector.</p>
+<p>当我们使用Reflector创建该类时，所有在列名列表（rowColumns）中
+的各项将会成为该类的一个数据成员（data members）。
+</p>
 
-<h2>Initialization</h2>
+<h2>初始化（Initialization）</h2>
 
-<p>The initialization phase builds the SQL for the database interactions.
-It uses the system catalogs of the database to do this, but requires
-some basic information to get started. The class attributes of
-the classes derived from RowClass are used for this. Those classes
-are passed to a Reflector when it is created.</p>
+<p>在初始化的阶段，会建立一些SQL操作来和数据库进行互交。
+它使用到了数据库的系统目录，同时需要的还有另外一些基本信息。
+派生自RowClass的子类的类属性的作用便是提供这些信息。
+这些子类在创建的时候会被传入一个Reflector进行处理。</p>
 
-<p>There are currently two available reflectors in Twisted Enterprise,
-the SQL Reflector for relational databases which uses the python DB
-API, and the XML Reflector which uses a file system containing XML
-files. The XML reflector is currently extremely slow.</p>
+<p>现今在Twisted企业框架（Twisted Enterprise）中可用的reflectors：
+一是SQL Reflector：用于关系数据库，使用的是python的数据库API
+另外一个是XML Reflector：用于包含XML文件的文件系统，但是使用起来
+速度非常缓慢。
+</p>
 
-<p>An example class list for the RoomRow class we specified above using the SQLReflector:</p>
+<p>来看个例子，学习下如何通过SQLReflector来使用上面创建的RoomRow：</p>
 
 <pre class="python">
 
@@ -114,17 +113,16 @@ dbpool = adbapi.ConnectionPool("pyPgSQL.PgSQL")
 reflector = SQLReflector( dbpool, [RoomRow] )
 </pre>
 
-<h2>Creating Row Objects</h2>
+<h2>创建RowObject（Create RowObject）</h2>
 
-<p>There are two methods of creating RowObjects - loading from
-the database, and creating a new instance ready to be inserted.</p>
+<p>这里有两个方法用于创建一个RowObject——从数据库中取出已有的或者是
+创建一个新实例并插入到数据库中。
+</p>
 
-<p>To load rows from the database and create RowObject instances
-for each of the rows, use the loadObjectsFrom method of the Reflector.
-This takes a tableName, an optional <q>user data</q> parameter,
-and an optional <q>where clause</q>. The where clause may
-be omitted which will retrieve all the rows from the table. For
-example:</p>
+<p>为了从数据库中取出行或者新加行，可以使用Reflector的loadObjectsFrom方法。
+它的参数包括：表名，可选的“用户数据”参数，可选的“where子句”。当然了，当你
+想要取出所有的行的时候，where子句是可以省略的。
+例如：</p>
 
 <pre class="python">
 def gotRooms(rooms):
@@ -136,14 +134,14 @@ d = reflector.loadObjectsFrom("testrooms",
 d.addCallback(gotRooms)
 </pre>
 
-<p>For more advanced RowObject construction, loadObjectsFrom may
-use a factoryMethod that was specified as a class attribute for
-the RowClass derived class. This method will be called for each
-of the rows with the class object, the userData parameter, and
-a dictionary of data from the database keyed by column name. This
-factory method should return a fully populated RowObject instance
-and may be used to do pre-processing, lookups, and data transformations
-before exposing the data to user code. An example factory method:</p>
+<p>对于更高级的RowObject结构，loadObjectsFrom可以调用每个在RowClass子类
+中被声明为类属性的工厂方法(也就是上文提到的factoyMethod)。对于每一个行对象，
+我们都会调用这个工厂方法（参数是类对象，用户数据以及以列名作为关键字的一个字典，
+其中存放了数据库中的数据）。这个工厂方法会返回一个完全组装好（fully populated）
+的RowObject实例，
+可以用来进行一些预处理，查询或者是数据格式的转换，以方便最终显示给用户。
+一个factory方法的例子如下：
+</p>
 
 <pre class="python">
 def testRoomFactory(roomClass, userData, kw):
@@ -151,11 +149,10 @@ def testRoomFactory(roomClass, userData, kw):
     newRoom.__dict__.update(kw)
     return newRoom</pre>
 
-<p>The last method of creating a row object is for new instances
-that do not already exist in the database table. In this case,
-create a new instance and assign its primary key attributes and
-all of its member data attributes, then pass it to the <code>insertRow</code>
-method of the Reflector. For example:</p>
+<p>我们还需要考虑如何往一个数据表中插入一个之前并不存在的实例。
+在这种情况下，可以创建一个新的实例，指明它的主键，并未数据域进行赋值，
+然后就可以将它穿递给Reflector的<code>insertRow</code>方法
+来看个例子：</p>
 
 <pre class="python">
     newRoom = RoomRow()
@@ -170,70 +167,69 @@ method of the Reflector. For example:</p>
     reflector.insertRow(newRoom).addCallback(onInsert)
 </pre>
 
-<p>This will insert a new row into the database table for this
-new RowObject instance. Note that the <code>assignKeyAttr</code>
-method must be used to set primary key attributes - regular attribute
-assignment of a primary key attribute of a rowObject will raise
-an exception. This prevents the database identity of RowObject
-from being changed by mistake.</p>
+<p>结果就是会在数据库的表中插入一个新行（内容由newRoom的属性决定）。
+要注意<code>assignKeyAttr</code>这个方法使用来定义主键的值的——普通
+的属性如果被这个函数进行赋值会抛出一个异常。这可以用来保护数据库
+的一致性。
+</p>
 
 
-<h2>Relationships Between Tables</h2>
+<h2>表与表之间的关系（Relationships Between Tables）</h2>
 
-<p>Specifying a foreign key for a RowClass creates a relationship
-between database tables. When <code
-class="python">loadObjectsFrom</code> is called for a table, it will
-automatically load all the children rows for the rows from the specified
-table. The child rows will be put into a list member variable of the
-rowObject instance with the name <code>childRows</code> or if a
-<em>containerMethod</em> is specified for the foreign key relationship,
-that method will be called on the parent row object for each row that is
-being added to it as a child.</p>
+<p>当我们为一个RowClass指定一个外键的时候实际上已经创建了表于表之间的
+某种联系。当 <code
+class="python">loadObjectsFrom</code> 被调用的时候，它将自动
+从指定的表中装载所有的相关行（children rows），这些行将会放到一个名字
+叫作 <code>childRows</code> 的列表中，这个列表中会存放着这些rowObject，
+如果我们又为这个外键关系定义了<em>containerMethod</em> 
+(如果你忘记了这个函数，可以查看前面类定义一节)，那么这个函数将会被父行
+（parent row）调用来处理自己的各个子行（children rows，前面翻译成了相关行）。
+</p>
 
-<p>The <em>autoLoad</em> member of the foreign key definition is a flag
-that specifies whether child rows should be auto-loaded for that
-relationship when a parent row is loaded.</p>
+<p>在外键的定义中有一个属性 <em>autoLoad</em> ，它作为一个标志
+来决定是否当父行（parent row）被加载的时候，所对应的子行（child row）
+也会被自动加载。</p>
 
-<h2>Duplicate Row Objects</h2>
+<h2>多次读取Row Objects（Duplicate Row Objects）（以前的翻译叫做复制行
+，感觉两个都很别扭）</h2>
 
-<p>If a reflector tries to load an instance of a rowObject that
-is already loaded, it will return a reference to the existing
-rowObject rather than creating a new instance. The reflector maintains
-a cache of weak references to all loaded row objects by their
-unique keys for this purpose.</p>
+<p>如果一个reflector想要加载一个已经存在了的rowObject实例，它得到的
+其实是已经存在的那个rowObject的一个引用，而并不会去新建一个。为了
+完成这个功能，reflector有一个cache，里面保存着对所有已经加载的
+rowObject的引用（原文为weak references），区分这些rowObjects的方法
+是通过他们各自拥有一个独一无二的关键字值(keys)。
+</p>
 
-<h2>Updating Row Objects</h2>
+<h2>更新RowObject（Updating Row Objects）</h2>
 
-<p>RowObjects have a <code>dirty</code> member attribute that is
-set to 1 when any of the member attributes of the instance that
-map to database columns are changed. This dirty flag can be used
-to tell when RowObjects need to be updated back to the database.
-In addition, the <code>setDirty</code> method can be overridden
-to provide more complex automated handling such as dirty lists
-(be sure to call the base class setDirty though!).</p>
+<p>RowObjects 有一个属性<code>dirty</code> ，当该实例中任何一个
+属性被修改以后，dirty将会被置为1。这个标志位的作用就是用来判断
+RowObjects是有改动，从而判断是否有需要将更新后的值写回数据库。
+此外，你可以重写 <code>setDirty</code> 方法实现一些更加复杂的逻辑。
+</p>
 
-<p>When it is determined that a RowObject instance is dirty and
-need to have its state updated into the database, pass that object
-to the <code>updateRow</code> method of the Reflector. For example:</p>
+<p>一旦通过dirty来确定我们需要更新数据库中的数据，可以把这个RowObject作为参数传给
+Reflector的 <code>updateRow</code> 方法。例子：</p>
 
 <pre class="python">
 reflector.updateRow(room).addCallback(onUpdated)
 </pre>
 
-<p>For more complex behavior, the reflector can generate the SQL
-for the update but not perform the update. This can be useful
-for batching up multiple updates into single requests. For example:</p>
+<p>为了应对频繁更新数据库的情况，reflector可以生成SQL语句用来更新，但是并不会立即
+进行更新的操作。这在当我们有许许多多的更新操作要做的时候非常有用，
+因为在最后可以将所有需要进行更新的操作一起通过一个请求完成提交。例子：
+</p>
 
 <pre class="python">
 updateSQL = reflector.updateRowSQL(room)
 </pre>
 
-<h2>Deleting Row Objects</h2>
+<h2>删除RowObject（Deleting Row Objects）</h2>
 
-<p>To delete a row from a database pass the RowObject instance
-for that row to the Reflector <code>deleteRow</code> method.
-Deleting the python Rowobject instance does <em>not</em> automatically
-delete the row from the database. For example:</p>
+<p>为了删除一个RowObject实例，我们可以把它作为从参数传递给
+Reflector 的 <code>deleteRow</code> 方法。
+注意！删除Python中的RowObject并 <em>不会</em> 自动
+删除其在数据库中对应的那一行。删除的一个简单例子：</p>
 
 <pre class="python">
 reflector.deleteRow(room)
