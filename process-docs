@@ -8,8 +8,8 @@ DEST="$NIGHTLY/online"
 CURRENT="/home2/fantixor/twisted-doc-zh/trunk"
 VERSION="8.10"
 date +%Y-%m-%d > $NIGHTLY/latest
-date +%Y-%m-%d
-
+echo "Output from the nightly build script of twisted-doc-zh project:"
+echo "Build on: `date +%Y-%m-%d`"
 echo
 echo "Updating..."
 cd $CURRENT
