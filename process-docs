@@ -46,6 +46,7 @@ echo "Cleaning up..."
 #svn ls -R | xargs rm
 find | grep xhtml | xargs rm
 find | grep "\.svn" | xargs rm -rf
+rm process-docs
 
 echo
 echo "Copying necessary files..."
