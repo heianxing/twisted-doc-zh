@@ -20,6 +20,7 @@ then
 	echo "No update this time, will not build"
 	exit 0
 fi
+echo "Aha, new version! Could someone please update the nightly tarball to google code? :)"
 echo $REVISION > $NIGHTLY/rev
 TAR="$NIGHTLY/twisted-doc-zh_nightly_r$REVISION.tar.gz"
 echo "Revision $REVISION."
