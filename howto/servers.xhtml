@@ -51,10 +51,7 @@ class QOTD(Protocol):
 
     <p>这个协议在建立连接之后，发送一条谚语（原文是“An apple a day keeps the doctor away”——译者注），然后断开连接。</p>
 
-	<p><code>connectionMade</code>事件通常发生在连接对象构建的时候，以及任何初始化握手时（像上面的QOTD协议，其实它是根据RFC 865写的（RFC 865就是Quote of the Day Protocol——译者注））。<code>connectionLost</code>事件发生在连接特定的各种对象销毁时。
-    in the QOTD protocol above, which is actually based on RFC
-    865). The <code>connectionLost</code> event is where tearing down of any
-    connection-specific objects is done. Here is an example:</p>
+	<p><code>connectionMade</code>事件通常发生在连接对象构建的时候，以及任何初始化握手时（像上面的QOTD协议，其实它是根据RFC 865写的（RFC 865就是Quote of the Day Protocol——译者注））。<code>connectionLost</code>事件发生在连接特定的各种对象销毁时。这里有个例子：</p>
 <pre class="python">
 from twisted.internet.protocol import Protocol
 
@@ -63,7 +60,7 @@ class Echo(Protocol):
     def connectionMade(self):
         self.factory.numProtocols = self.factory.numProtocols+1 
         if self.factory.numProtocols &gt; 100:
-            self.transport.write("Too many connections, try later") 
+            self.transport.write("哦唷，连接太多啦！过会儿再试试吧。") 
             self.transport.loseConnection()
 
     def connectionLost(self, reason):
@@ -73,21 +70,13 @@ class Echo(Protocol):
         self.transport.write(data)
 </pre>
 
-    <p>Here <code>connectionMade</code> and
-    <code>connectionLost</code> cooperate to keep a count of the
-    active protocols in the factory. <code>connectionMade</code>
-    immediately closes the connection if there are too many active
-    protocols.</p>
+    <p>例子中，<code>connectionMade</code>和<code>connectionLost</code>一起维护一个计数器，跟踪工厂中活动协议的数量。一旦计数器显示超过警戒值（例子中的“100”），任何新的连接都会被<code>connectionMade</code>当场关闭。</p>
 
-    <h3>Using the Protocol</h3>
+    <h3>使用协议</h3>
 
-    <p>In this section, I will explain how to test your protocol
-    easily. (In order to see how you should write a production-grade Twisted
-    server, though, you should read the <a href="plugin.xhtml" >Writing Plug-Ins
-    for Twisted</a> HOWTO as well).</p>
+    <p>在这一节中，我会说明如何简单地试验你的协议。（然而，要写出产品级的Twisted服务器，你应该也读一下<a href="plugin.xhtml" >编写Twisted插件</a>的指南）。</p>
 
-    <p>Here is code that will run the QOTD server discussed
-    earlier</p>
+    <p>下面的代码会运行前面讨论过的QOTD服务器：</p>
 <pre class="python">
 from twisted.internet.protocol import Protocol, Factory
 from twisted.internet import reactor
@@ -98,46 +87,32 @@ class QOTD(Protocol):
         self.transport.write("An apple a day keeps the doctor away\r\n") 
         self.transport.loseConnection()
 
-# Next lines are magic:
+# 魔术发生在下面一行：
 factory = Factory()
 factory.protocol = QOTD
 
-# 8007 is the port you want to run under. Choose something &gt;1024
+# 8007是想要跑服务器的端口。随便选个&gt;1024的都行
 reactor.listenTCP(8007, factory)
 reactor.run()
 </pre>
 
-    <p>Don't worry about the last 6 magic lines -- you will
-    understand what they do later in the document.</p>
+    <p>不必担心最后6行魔法般的代码——读到后面你就知道他们是干嘛的了。</p>
 
-    <h3>Helper Protocols</h3>
+    <h3>助手协议</h3>
 
-    <p>Many protocols build upon similar lower-level abstraction.
-    The most popular in internet protocols is being line-based.
-    Lines are usually terminated with a CR-LF combinations.</p>
+    <p>许多协议的底层抽象都是类似的，网上最流行的就数按行分的了——通常每一行都结束于一个回车－换行的组合。</p>
 
-    <p>However, quite a few protocols are mixed - they have
-    line-based sections and then raw data sections. Examples
-    include HTTP/1.1 and the Freenet protocol.</p>
+    <p>然而，也有很小一部分协议是混合的——他们包含分行的部分，也有原始数据的部分。这样的例子包括HTTP/1.1和Freenet协议。</p>
 
-    <p>For those cases, there is the <code>LineReceiver</code>
-    protocol. This protocol dispatches to two different event
-    handlers - <code>lineReceived</code> and
-    <code>rawDataReceived</code>. By default, only
-    <code>lineReceived</code> will be called, once for each line.
-    However, if <code>setRawMode</code> is called, the protocol
-    will call <code>rawDataReceived</code> until
-    <code>setLineMode</code> is called, which returns it to using
-    <code>lineReceived</code>.</p>
+    <p><code>LineReceiver</code>协议适用于这些情况，它可以把事件分发给两个不同的处理器——<code>lineReceived</code>和<code>rawDataReceived</code>。默认地，协议只会使用<code>lineReceived</code>（一行数据调用一次），但是你可以用<code>setRawMode</code>和<code>setLineMode</code>来调整协议的处理器。</p>
 
-    <p>Here is an example for a simple use of the line
-    receiver:</p>
+    <p>这里有个按行接收的简单示例：</p>
 <pre class="python">
 from twisted.protocols.basic import LineReceiver
 
 class Answer(LineReceiver):
 
-    answers = {'How are you?': 'Fine', None : "I don't know what you mean"}
+    answers = {'你好吗？': '很好', None : "不懂你说的啥"}
 
     def lineReceived(self, line):
         if self.answers.has_key(line):
@@ -146,44 +121,27 @@ class Answer(LineReceiver):
             self.sendLine(self.answers[None])
 </pre>
 
-    <p>Note that the delimiter is not part of the line.</p>
+    <p>注意，行分割符（回车－换行）并不在line中。</p>
 
-    <p>Several other, less popular, helpers exist, such as a
-    netstring based protocol and a prefixed-message-length
-    protocol.</p>
+    <p>另外还有一些其他不是特别常用的助手协议，比如说基于netstring的协议，还有定长协议。</p>
 
-    <h3>State Machines</h3>
+    <h3>状态机</h3>
 
-    <p>Many Twisted protocol handlers need to write a state machine
-    to record the state they are at. Here are some pieces of advice
-    which help to write state machines:</p>
+    <p>许多Twisted协议处理器需要实现状态机来记录它目前的状态，这里有一些关于实现状态机的建议：</p>
 
     <ul>
-      <li>Don't write big state machines. Prefer to write a state
-      machine which deals with one level of abstraction at a
-      time.</li>
+      <li>别写巨型状态机，写一次只处理一层抽象的最好了。</li>
 
-      <li>Use Python's dynamicity to create open ended state
-      machines. See, for example, the code for the SMTP
-      client.</li>
+      <li>使用Python的动态特性来创建open ended（什么意思？）的状态机。可以参考——比如说——SMTP客户端的代码。</li>
 
-      <li>Don't mix application-specific code with Protocol
-      handling code. When the protocol handler has to make an
-      application-specific call, keep it as a method call.</li>
+      <li>不要把应用逻辑与协议处理代码混在一起。如果协议处理器必须要调用应用逻辑的话，那就尽量用方法调用。</li>
     </ul>
 
-    <h2>Factories</h2>
+    <h2>工厂</h2>
 
-    <p>As mentioned before, usually the class <code
-    class="API">twisted.internet.protocol.Factory</code> works,
-    and there is no need to subclass it. However, sometimes there
-    can be factory-specific configuration of the protocols, or
-    other considerations. In those cases, there is a need to
-    subclass <code>Factory</code>.</p>
+    <p>正如前面提到的，通常情况下只用<code class="API">twisted.internet.protocol.Factory</code>类就行了，不必派生子类。但有些时候，协议可能会有工厂相关配置，或是其他的考虑，这时候就有必要派生<code>Factory</code>的子类了。</p>
 
-    <p>For a factory which simply instantiates instances of a
-    specific protocol class, simply instantiate
-    <code>Factory</code>, and sets its <code>protocol</code> attribute:</p>
+    <p>对于一个只是“生产”协议的工厂来说，只需要实例化一个<code>Factory</code>，并且设置它的<code>protocol</code>属性：</p>
 <pre class="python">
 from twisted.internet.protocol import Factory
 from twisted.protocols.wire import Echo
@@ -192,8 +150,7 @@ myFactory = Factory()
 myFactory.protocol = Echo
 </pre>
 
-    <p>If there is a need to easily construct factories for a
-    specific configuration, a factory function is often useful:</p>
+    <p>如果需要方便地为特殊配置构造工厂，那么一个工厂函数总是很有用的：</p>
 <pre class="python">
 from twisted.internet.protocol import Factory, Protocol
 
@@ -207,11 +164,12 @@ class QOTD(Protocol):
 def makeQOTDFactory(quote=None):
     factory = Factory()
     factory.protocol = QOTD
-    factory.quote = quote or 'An apple a day keeps the doctor away'
+    factory.quote = quote or '一天一苹果，医生不缠我'
     return factory
 </pre>
 
-    <p>A Factory has two methods to perform application-specific
+    <p>在工厂的<code>__init__</code>和<code>__del__</code>里写一些
+    A Factory has two methods to perform application-specific
     building up and tearing down (since a Factory is frequently
     persisted, it is often not appropriate to do them in <code>__init__</code>
     or <code>__del__</code>, and would frequently be too early or too late).</p>
