@@ -4,21 +4,19 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <title>在Twisted中使用线程（Using Threads in Twisted）</title>
+    <title>Using Threads in Twisted</title>
   </head>
 
   <body>
-    <h1>在Twisted中使用线程（Using Threads in Twisted）</h1>
+    <h1>Using Threads in Twisted</h1>
 
-    <h2>在线程安全的环境下运行程序</h2>
+    <h2>Running code in a thread-safe manner</h2>
 
-    <p>大部分的Twisted代码都不是线程安全的，比如说由protocol
-    （这里应该指的是负责会话逻辑的protocol?）向transport（
-    这里是指的Twisted跟Socket通讯的那个transport?）写数据就是非
-    线程安全的。因此，我们就要在主循环中调度这些方法。可以通过
-     <code class="API">
-     twisted.internet.interfaces.IReactorThreads.callFromThread
-     </code>函数做到：</p>
+    <p>Most code in Twisted is not thread-safe. For example,
+    writing data to a transport from a protocol is not thread-safe.
+    Therefore, we want a way to schedule methods to be run in the
+    main event loop. This can be done using the function <code
+    class="API">twisted.internet.interfaces.IReactorThreads.callFromThread</code>:</p>
 <pre class="python">
 from twisted.internet import reactor
 
@@ -32,17 +30,18 @@ def threadSafeScheduler():
                                              # in the event loop
 </pre>
 
-    <h2>在线程中运行代码</h2>
+    <h2>Running code in threads</h2>
 
-    <p>有些时候我们想要以线程的方式来运行代码 —— 比如当我们
-    的代码使用到了阻塞式API的时候。Twisted通过IReactorThreads API (<code
-    class="API">twisted.internet.interfaces.IReactorThreads</code>)
-    提供了相应的方法。并且 <code
-    class="API">twisted.internet.threads</code>中也提供了一些额外
-    的实用的函数来支持这一点。简单说来，这些函数方法允许我们以线程池
-    的形式来管理调度我们的代码。</p>
+    <p>Sometimes we may want to run methods in threads - for
+    example, in order to access blocking APIs. Twisted provides
+    methods for doing so using the IReactorThreads API (<code
+    class="API">twisted.internet.interfaces.IReactorThreads</code>).
+    Additional utility functions are provided in <code
+    class="API">twisted.internet.threads</code>. Basically, these
+    methods allow us to queue methods to be run by a thread
+    pool.</p>
 
-    <p>举个例子，可以通过这样的方法在线程中执行我们的代码：</p>
+    <p>For example, to run a method in a thread we can do:</p>
 <pre class="python">
 from twisted.internet import reactor
 
@@ -55,13 +54,14 @@ def aSillyBlockingMethod(x):
 reactor.callInThread(aSillyBlockingMethod, "2 seconds have passed")
 </pre>
 
-    <h2>实用的工具方法</h2>
+    <h2>Utility Methods</h2>
 
-    <p> 这些方法并不是<code
-    class="API">twisted.internet.reactor</code> API的一部分，而是在
-    <code class="API">twisted.internet.threads</code>中实现的。</p>
+    <p>The utility methods are not part of the <code
+    class="API">twisted.internet.reactor</code> APIs, but are implemented
+    in <code class="API">twisted.internet.threads</code>.</p>
 
-    <p>如果我们有许多方法需要顺序的在一个线程中执行，这么做：</p>
+    <p>If we have multiple methods to run sequentially within a thread,
+    we can do:</p>
 
 <pre class="python">
 from twisted.internet import threads
@@ -80,8 +80,8 @@ commands.append((aSillyBlockingMethodTwo, ["And the second"], {}))
 threads.callMultipleInThread(commands)
 </pre>
 
-    <p>我们想把一个函数放到线程里面执行，而且又想得到他的返回值，可以让
-    这个函数返回一个Deferred：</p>
+    <p>For functions whose results we wish to get, we can have the
+    result returned as a Deferred:</p>
 <pre class="python">
 from twisted.internet import threads
 
@@ -97,9 +97,9 @@ d = threads.deferToThread(doLongCalculation)
 d.addCallback(printResult)
 </pre>
 
-    <p>想在reactor中调用一个函数并且得到他的结果，可以使用
-    <code base="twisted.internet.threads" class="API">
-    blockingCallFromThread</code>：</p>
+    <p>If you wish to call a method in the reactor thread and get its
+    result, you can use <code base="twisted.internet.threads" class="API">
+    blockingCallFromThread</code>:</p>
 
 <pre class="python">
 from twisted.internet import threads, reactor, defer
@@ -120,17 +120,20 @@ reactor.callInThread(inThread)
 reactor.run()
 </pre>
 
-    <p><code>blockingCallFromThread</code> 会返回一个对象或者是抛出
-    返回的异常，也可能抛出一个传递给它的异常， 如果说传递给他的是一个
-    Deferred,那么返回的就是一个经过callback处理的结果或者是经过errback
-    处理的异常（是这样么？）。</p>
+    <p><code>blockingCallFromThread</code> will return the object or raise
+    the exception returned or raised by the function passed to it. If the
+    function passed to it returns a Deferred, it will return the value the
+    Deferred is called back with or raise the exception it is errbacked
+    with.</p>
 
-    <h2>管理线程池</h2>
+    <h2>Managing the Thread Pool</h2>
 
-    <p>Twisted中的线程池是由 <code
-    class="API">twisted.python.threadpool.ThreadPool</code>实现的。</p>
+    <p>The thread pool is implemented by <code
+    class="API">twisted.python.threadpool.ThreadPool</code>.</p>
 
-    <p>可以很简单的完成对线程池容量大小的修改：</p>
+    <p>We may want to modify the size of the threadpool, increasing
+    or decreasing the number of threads in use.  We can do this
+    do this quite easily:</p>
 
 <pre class="python">
 from twisted.internet import reactor
@@ -138,9 +141,10 @@ from twisted.internet import reactor
 reactor.suggestThreadPoolSize(30)
 </pre>
 
-  <p>线程池默认的大小决定于reactor。默认的reactor规定容量的大小在5到10之间。
-  需要格外小心的是，在你改变池大小之前，确保你知道这些线程资源的使用情况。
-  </p>
+  <p>The default size of the thread pool depends on the reactor being used;
+  the default reactor uses a minimum size of 5 and a maximum size of 10.  Be
+  careful that you understand threads and their resource usage before
+  drastically altering the thread pool sizes.</p>
   </body>
 </html>
 

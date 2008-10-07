@@ -1,34 +1,14 @@
 #!/bin/sh
 
 templ=howto/template.tpl
-#LORE=`which lore` # "/usr/bin/lore"
-LORE="/home2/fantixor/system/bin/lore"
-NIGHTLY="/home2/fantixor/twisted-doc-zh/nightly"
-DEST="$NIGHTLY/online"
-CURRENT="/home2/fantixor/twisted-doc-zh/trunk"
-VERSION="8.10"
-date +%Y-%m-%d > $NIGHTLY/latest
-echo "Output from the nightly build script of twisted-doc-zh project:"
-echo "Build on: `date +%Y-%m-%d`"
-echo
-echo "Updating..."
-cd $CURRENT
-/home2/fantixor/system/bin/svn up
-REVISION=$(/home2/fantixor/system/bin/svn info | grep "Rev:" | awk '{sub(/Last Changed Rev: /, "");print}')
-if [ $REVISION = $(cat $NIGHTLY/rev) ]
-then
-	echo "No update this time, will not build"
-	exit 0
-fi
-echo "Aha, new version! Could someone please update the nightly tarball to google code? :)"
-echo $REVISION > $NIGHTLY/rev
-TAR="$NIGHTLY/twisted-doc-zh_nightly_r$REVISION.tar.gz"
-echo "Revision $REVISION."
+LORE=/usr/bin/lore
+DEST=../twisted-doc-zh.out
+CURRENT=`pwd`
+VERSION=8.10
 
-echo
-echo "Begin to process docs..."
 rm $DEST -rf
 cp $CURRENT $DEST -R
+
 cd $DEST
 for doc in . man examples howto howto/tutorial howto/policy specifications upgrades upgrades/2.0 ; do
 #for doc in ./ ; do
@@ -42,26 +22,18 @@ for doc in . man examples howto howto/tutorial howto/policy specifications upgra
 	fi
 done
 
-echo
 echo "Cleaning up..."
-#svn ls -R | xargs rm
-find | grep xhtml | xargs rm
+svn ls -R | xargs rm
 find | grep "\.svn" | xargs rm -rf
-rm process-docs
 
-echo
 echo "Copying necessary files..."
 cp $CURRENT/howto/stylesheet.css howto/
-
-echo
 echo "Fixing problems left by lore..."
 find . -name "*.html" | xargs perl -pi -e 's/\<h2\>Footnotes\<\/h2\>/\<h2\>脚注\<\/h2\>/g'
 find . -name "*.html" | xargs perl -pi -e 's/\<\?xml\ version\=\"1\.0\"\?\>/\<\?xml\ version\=\"1\.0\"\ encoding\=\"UTF\-8\"\?\>/g'
 
-echo
 echo "Archiving..."
-cd $NIGHTLY
-rm $TAR -f
-mv online twisted-doc-zh_nightly_r$REVISION
-tar czvf $TAR twisted-doc-zh_nightly_r$REVISION
-mv twisted-doc-zh_nightly_r$REVISION online
+mv twisted-doc-zh.tar.gz /tmp/twisted-doc-zh.tar.gz.orig
+tar czvf /tmp/twisted-doc-zh.tar.gz $DEST
+mv /tmp/twisted-doc-zh.tar.gz.orig .
+mv /tmp/twisted-doc-zh.tar.gz .

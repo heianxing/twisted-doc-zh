@@ -1,10 +1,10 @@
-<?xml version="1.0" encoding="UTF-8" ?>
+<?xml version="1.0"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-<title>Twisted文档：</title>
+<title>Twisted Documentation: </title>
 <link type="text/css" rel="stylesheet"
 href="stylesheet.css" />
   </head>
@@ -16,8 +16,8 @@ href="stylesheet.css" />
 	
     </div>
 
-    <p><a href="index.html">索引页</a></p>
-    <span class="version">版本：</span>
+    <p><a href="index.html">Index</a></p>
+    <span class="version">Version: </span>
   </body>
 </html>
 

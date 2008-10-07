@@ -6,57 +6,56 @@
   </head>
 <body>
 
-<h1>从头开始Twisted（Finger的进化）</h1>
+<h1>Twisted from Scratch, or The Evolution of Finger</h1>
 
-<h2>简介</h2>
+<h2>Introduction</h2>
 
 <p>
-Twisted是一个庞大的系统。人们尝试接触它，却常常会被吓跑，因为很难确定从何入手。
+Twisted is a big system. People are often daunted when they approach it. It's
+hard to know where to start looking.
 </p>
 
 <p>
-这篇教程将一步步地从头开始建立一个功能齐备的Twisted应用。
-内容涉及Twisted的各个主要部分。
-虽然代码比较多，但不必担心，会有一个由浅入深的过程。
+This guide builds a full-fledged Twisted application from the ground up, using
+most of the important bits of the framework. There is a lot of code, but don't
+be afraid.
 </p>
 
 <p>
-我们将要设计的应用是一个<q>Finger</q>服务，
-它用来展示用户信息。
-具体说明参考<a href="http://www.ietf.org/rfc/rfc1288.txt">RFC1288</a>。
-为了演示Twisted的一些高级特性，
-我们会加一点儿标准以外的功能。
+The application we are looking at is a <q>finger</q> service, along the 
+lines of the familiar service traditionally provided by UNIX&trade; servers. 
+We will extend this service slightly beyond the standard, in order to 
+demonstrate some of Twisted's higher-level features.
 </p>
 
-<h2>目录</h2>
+<h2>Contents</h2>
 
 <p>
-这篇教程分为11个部分：
+This tutorial is split into eleven parts:
 </p>
 
 <ol>
-<li><a href="intro.xhtml">
-Finger的进化：建立一个简单的Finger服务</a></li>
-<li><a href="protocol.xhtml">
-Finger的进化：增加特性</a></li>
-<li><a href="style.xhtml">
-Finger的进化：整理代码</a></li>
-<li><a href="components.xhtml">
-Finger的进化：转变为基于模块的架构</a></li>
-<li><a href="backends.xhtml">
-Finger的进化：可插入的后端</a></li>
-<li><a href="web.xhtml">
-Finger的进化：网页式前端</a></li>
-<li><a href="pb.xhtml">
-Finger的进化：支持使用Perspective Broker的Twisted客户端</a></li>
-<li><a href="factory.xhtml">
-Finger的进化：用一个工厂支持多个协议</a></li>
-<li><a href="client.xhtml">
-Finger的进化：一个Twisted的Finger客户端</a></li>
-<li><a href="library.xhtml">
-Finger的进化：构建Finger函数库</a></li>
-<li><a href="configuration.xhtml">
-Finger的进化：配置及打包以便发布</a></li>
+<li><a href="intro.xhtml">The Evolution of Finger: building a simple
+finger service</a></li>
+<li><a href="protocol.xhtml">The Evolution of Finger: adding features
+to the finger service</a></li>
+<li><a href="style.xhtml">The Evolution of Finger: cleaning up the
+finger code</a></li>
+<li><a href="components.xhtml">The Evolution of Finger: moving to a
+component based architecture</a></li>
+<li><a href="backends.xhtml">The Evolution of Finger: pluggable
+backends</a></li>
+<li><a href="web.xhtml">The Evolution of Finger: a web
+frontend</a></li>
+<li><a href="pb.xhtml">The Evolution of Finger: Twisted client
+support using Perspective Broker</a></li>
+<li><a href="factory.xhtml">The Evolution of Finger: using a single
+factory for multiple protocols</a></li>
+<li><a href="client.xhtml">The Evolution of Finger: a Twisted finger
+client</a></li>
+<li><a href="library.xhtml">The Evolution of Finger: making a finger library</a></li>
+<li><a href="configuration.xhtml">The Evolution of Finger:
+configuration and packaging of the finger service</a></li>
 </ol>
 
 
